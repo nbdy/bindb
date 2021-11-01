@@ -19,12 +19,13 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <cstdio>
 #include <vector>
 #include <map>
 #include <sstream>
 #include <functional>
-#include <fstream>
 #include <filesystem>
+#include <unistd.h>
 
 
 class Database {
@@ -47,7 +48,7 @@ class Database {
   const char* m_sDatabasePath = nullptr;
   uint32_t m_u32ExpectedMagic = EXPECTED_MAGIC;
 
-  std::fstream m_FileStream;
+  FILE* m_pFile;
   bool m_bError = false;
 
   Header m_Header;
@@ -55,7 +56,7 @@ class Database {
   std::vector<EntryTypeDescription> m_EntryDescriptions;
   std::vector<EntryHeader> m_EntryPositions;
 
-  uint32_t getEntryDescriptionsSize() const {
+  [[nodiscard]] uint32_t getEntryDescriptionsSize() const {
     return m_Header.m_u32EntryTypeCount * m_u32EntryTypeDescriptionSize;
   }
 
@@ -68,25 +69,25 @@ class Database {
   }
 
   void _writeHeader() {
-    m_FileStream.seekp(0, std::ios::beg);
-    m_FileStream.write(reinterpret_cast<const char*>(&m_Header), m_u32HeaderSize);
+    std::fseek(m_pFile, 0, SEEK_SET);
+    std::fwrite(&m_Header, m_u32HeaderSize, 1, m_pFile);
     sync();
   }
 
   void _readHeader() {
-    m_FileStream.seekg(0, std::ios::beg);
-    m_FileStream.read(reinterpret_cast<char*>(&m_Header), m_u32HeaderSize);
+    std::fseek(m_pFile, 0, SEEK_SET);
+    std::fread(&m_Header, m_u32HeaderSize, 1, m_pFile);
   }
 
   void _readEntryTypes() {
     m_EntryDescriptions.resize(m_Header.m_u32EntryTypeCount);
-    m_FileStream.seekg(m_u32HeaderSize, std::ios::beg);
-    m_FileStream.read(reinterpret_cast<char*>(&m_EntryDescriptions[0]), getEntryDescriptionsSize());
+    std::fseek(m_pFile, m_u32HeaderSize, SEEK_SET);
+    std::fread(&m_EntryDescriptions[0], m_u32EntryTypeDescriptionSize, m_Header.m_u32EntryTypeCount, m_pFile);
   }
 
   void _writeEntryTypes() {
-    m_FileStream.seekp(m_u32HeaderSize, std::ios::beg);
-    m_FileStream.write(reinterpret_cast<const char*>(&m_EntryDescriptions[0]), getEntryDescriptionsSize());
+    std::fseek(m_pFile, m_u32HeaderSize, SEEK_SET);
+    std::fwrite(&m_EntryDescriptions[0], m_u32EntryTypeDescriptionSize, m_Header.m_u32EntryTypeCount, m_pFile);
     sync();
   }
 
@@ -98,11 +99,11 @@ class Database {
       return;
     }
 
-    m_FileStream.seekg(firstHeaderOffset, std::ios::beg);
+    std::fseek(m_pFile, firstHeaderOffset, SEEK_SET);
     // Iterate over all the entries
     EntryHeader eHdr;
     for (uint32_t idx = 0; idx < m_Header.m_u32EntryCount; idx++) {
-      m_FileStream.read(reinterpret_cast<char*>(&eHdr), m_u32EntryHeaderSize);
+      std::fread(&eHdr, m_u32EntryHeaderSize, 1, m_pFile);
       if (_skip2Next(eHdr)) {
         m_EntryPositions.push_back(eHdr);
       }
@@ -148,7 +149,7 @@ class Database {
     for (const auto& e : m_EntryDescriptions) {
       if (e.m_Hash == i_EntryHeader) {
         found = true;
-        m_FileStream.seekg(e.m_u32EntrySize, std::ios::cur);
+        std::fseek(m_pFile, e.m_u32EntrySize, SEEK_CUR);
         break;
       }
     }
@@ -158,7 +159,7 @@ class Database {
     return found;
   }
 
-  uint32_t getBodyOffset() const {
+  [[nodiscard]] uint32_t getBodyOffset() const {
     return m_u32HeaderSize + (m_u32EntryTypeDescriptionSize * m_Header.m_u32EntryTypeCount);
   }
 
@@ -171,22 +172,12 @@ class Database {
     return s - o;
   }
 
-  void _createFile() {
-    m_FileStream.open(m_sDatabasePath, std::fstream::out | std::fstream::binary);
-    m_FileStream.close();
-  }
-
  public:
   explicit Database(const char* i_sDatabasePath) : m_sDatabasePath(i_sDatabasePath) {
-    if(!std::filesystem::exists(m_sDatabasePath)) {
-      _createFile();
-    }
-
-    m_FileStream.open(m_sDatabasePath, std::fstream::out | std::fstream::in | std::fstream::binary);
-    if(!m_FileStream.is_open()) {
+    m_pFile = std::fopen(m_sDatabasePath, "w+");
+    if(m_pFile == nullptr) {
       std::cout << "Could not open " << m_sDatabasePath << std::endl;
     }
-
     _init();
   }
 
@@ -197,17 +188,15 @@ class Database {
   */
 
   ~Database() {
-    sync();
-    m_FileStream.close();
-  }
-
-  uint32_t getFileOffset() {
-    return m_FileStream.tellg();
+    if(m_pFile != nullptr) {
+      sync();
+      std::fclose(m_pFile);
+    }
   }
 
   uint32_t getFileSize() {
-    m_FileStream.seekg(0, std::ios::end);
-    auto r = m_FileStream.tellg();
+    std::fseek(m_pFile, 0, SEEK_END);
+    auto r = std::ftell(m_pFile);
 
     if(r == -1) {
       return 0;
@@ -220,7 +209,7 @@ class Database {
     return m_u32HeaderSize;
   }
 
-  uint32_t getEntryCount() const {
+  [[nodiscard]] uint32_t getEntryCount() const {
     return m_Header.m_u32EntryCount;
   }
 
@@ -230,10 +219,6 @@ class Database {
     return std::any_of(m_EntryDescriptions.begin(), m_EntryDescriptions.end(), [h](const EntryTypeDescription& e) {
       return h == e.m_Hash;
     });
-  }
-
-  bool hasError() const {
-    return m_FileStream.fail();
   }
 
   template<typename EntryType>
@@ -251,13 +236,13 @@ class Database {
     char body[bodySize + 1];
 
     auto bodyOffset = getBodyOffset();
-    m_FileStream.seekg(bodyOffset, std::ios::beg);
+    std::fseek(m_pFile, bodySize, SEEK_SET);
 
     if (bodySize > 0) {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Reading body (" << bodySize << " bytes)" << std::endl;
 #endif
-      m_FileStream.read(reinterpret_cast<char*>(body), bodySize);
+      std::fread(body, bodySize, 1, m_pFile);
     }
 
     // set the new entry type count after we read the body
@@ -271,8 +256,8 @@ class Database {
     bodyOffset = getBodyOffset();
 
     if(bodySize > 0) {
-      m_FileStream.seekp(bodySize, std::ios::beg);
-      m_FileStream.write(reinterpret_cast<const char*>(body), bodySize);
+      std::fseek(m_pFile, bodySize, SEEK_SET);
+      std::fwrite(body, bodySize, 1, m_pFile);
     }
 
     sync();
@@ -289,9 +274,9 @@ class Database {
     auto hdr = typeid(EntryType).hash_code();
     m_EntryPositions.push_back(hdr);
 
-    m_FileStream.seekp(0, std::ios::beg);
-    m_FileStream.write(reinterpret_cast<const char*>(&hdr), m_u32EntryHeaderSize);
-    m_FileStream.write(reinterpret_cast<const char*>(&entry), (long) entrySize);
+    std::fseek(m_pFile, 0, SEEK_SET);
+    std::fwrite(&hdr, m_u32EntryHeaderSize, 1, m_pFile);
+    std::fwrite(&entry, entrySize, 1, m_pFile);
     sync();
   }
 
@@ -311,23 +296,20 @@ class Database {
     // skip to first entry
     auto bodyOffset = getBodyOffset();
     auto em = entryDescriptions2Map();
+    std::fseek(m_pFile, bodyOffset, SEEK_SET);
     // iterate over positions
     for (const auto& p : m_EntryPositions) {
-      if(m_FileStream.eof()) {
-        std::cout << "eof" << std::endl;
-        break;
-      }
       bodyOffset += m_u32EntryHeaderSize;
-      m_FileStream.seekg(bodyOffset, std::fstream::beg);
-      auto g = m_FileStream.tellg();
+      std::fseek(m_pFile, m_u32EntryHeaderSize, SEEK_CUR);
       tmpSize = em[p];
       if (p == hdrHash) {
-        m_FileStream.read(reinterpret_cast<char*>(&tmp), (long) tmpSize);
+        std::fread(&tmp, tmpSize, 1, m_pFile);
         if(i_FilterFunction(tmp)) {
           entry = tmp;
           return idx;
         }
       }
+      std::fseek(m_pFile, (long) tmpSize, SEEK_CUR);
       bodyOffset += tmpSize;
       idx++;
     }
@@ -335,8 +317,8 @@ class Database {
     return -1;
   }
 
-  bool isOpen() const {
-    return m_FileStream.is_open();
+  [[nodiscard]] bool isOpen() const {
+    return m_pFile != nullptr;
   }
 
   const char* getFilePath() {
@@ -347,16 +329,19 @@ class Database {
 #ifndef NDEBUG
     PFNC
 #endif
-    sync();
-    m_FileStream.close();
-    bool r = remove(m_sDatabasePath) == 0;
-    return r;
+    if(m_pFile != nullptr) {
+      std::fclose(m_pFile);
+      m_pFile = nullptr;
+      return remove(m_sDatabasePath) == 0;
+    }
+    return false;
   }
 
   void sync() {
-    if(m_FileStream.sync() == -1){
+    if(std::fflush(m_pFile) == -1){
       std::cout << __PRETTY_FUNCTION__ << " sync error: " << strerror(errno) << std::endl;
     }
+    ::sync();
   }
 };
 
