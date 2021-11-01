@@ -78,3 +78,18 @@ TEST(Database, insert) {
 
   EXPECT_TRUE(db.deleteDatabase());
 }
+
+TEST(Database, reopenAndWrite) {
+  {
+    Database db(TEST_DB_PATH);
+    EXPECT_TRUE(db.isOpen());
+    insertEntryOneSingle(&db, 20);
+  }
+  {
+    Database db(TEST_DB_PATH);
+    EXPECT_TRUE(db.isOpen());
+    insertEntryTwoSingle(&db, 50);
+    EXPECT_EQ(db.getEntryCount(), 70);
+    EXPECT_TRUE(db.deleteDatabase());
+  }
+}

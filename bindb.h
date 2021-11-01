@@ -141,6 +141,14 @@ class Database {
     if (!m_bError) {
       _index();
     }
+
+#ifndef NDEBUG
+    std::cout << "Entry types: " << m_Header.m_u32EntryTypeCount << " | Entry count: " << m_Header.m_u32EntryCount << std::endl;
+    std::cout << "Entry description:" << std::endl;
+    for(const auto& e : m_EntryDescriptions) {
+      std::cout << "\tHash: " << e.m_Hash << " | Size: " << e.m_u32EntrySize << std::endl;
+    }
+#endif
   }
 
   // TODO(nbdy): optimize this
@@ -255,6 +263,9 @@ class Database {
     bodyOffset = getBodyOffset();
 
     if(bodySize > 0) {
+#ifndef NDEBUG
+      std::cout << __PRETTY_FUNCTION__ << " Writing body (" << bodySize << " bytes)" << std::endl;
+#endif
       lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
       write(m_iFileDescriptor, &body, bodySize);
     }
@@ -272,7 +283,9 @@ class Database {
     }
 
     m_EntryPositions.push_back(hdr);
+
     m_Header.m_u32EntryCount++;
+    _writeHeader();
 
     lseek(m_iFileDescriptor, 0, SEEK_END);
     write(m_iFileDescriptor, &hdr, m_u32EntryHeaderSize);
