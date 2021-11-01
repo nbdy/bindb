@@ -294,7 +294,7 @@ class Database {
   }
 
   template<typename EntryType>
-  void insertMultiple(std::vector<EntryType> entries, uint32_t chunkSize = 10) {
+  void insertMultiple(std::vector<EntryType> entries, uint32_t chunkSize = 1000) {
     auto entrySize = sizeof(EntryType);
     auto hdr = typeid(EntryType).hash_code();
 
