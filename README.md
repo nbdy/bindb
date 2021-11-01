@@ -56,7 +56,7 @@
 | Count | Single |
 | :---: | :----: |
 | 10k   | 0s     |
-| 100k  | 0s     |
+| 100k  | 1s     |
 | 1m    | 17s    |
 
 ## size per entry
