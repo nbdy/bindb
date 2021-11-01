@@ -234,7 +234,7 @@ class Database {
     char body[bodySize + 1];
 
     auto bodyOffset = getBodyOffset();
-    lseek(m_iFileDescriptor, bodySize, SEEK_SET);
+    lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
 
     if (bodySize > 0) {
 #ifndef NDEBUG
@@ -254,7 +254,7 @@ class Database {
     bodyOffset = getBodyOffset();
 
     if(bodySize > 0) {
-      lseek(m_iFileDescriptor, bodySize, SEEK_SET);
+      lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
       write(m_iFileDescriptor, &body, bodySize);
     }
 
@@ -272,7 +272,7 @@ class Database {
     auto hdr = typeid(EntryType).hash_code();
     m_EntryPositions.push_back(hdr);
 
-    lseek(m_iFileDescriptor, 0, SEEK_SET);
+    lseek(m_iFileDescriptor, 0, SEEK_END);
     write(m_iFileDescriptor, &hdr, m_u32EntryHeaderSize);
     write(m_iFileDescriptor, &entry, entrySize);
     sync();
@@ -306,8 +306,9 @@ class Database {
           entry = tmp;
           return idx;
         }
+      } else {
+        lseek(m_iFileDescriptor, (long) tmpSize, SEEK_CUR);
       }
-      lseek(m_iFileDescriptor, (long) tmpSize, SEEK_CUR);
       bodyOffset += tmpSize;
       idx++;
     }
