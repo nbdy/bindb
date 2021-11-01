@@ -44,8 +44,17 @@ struct EntryTwo {
 
 struct EntryThree {
   double m_Double;
-  std::string m_String;
+  char m_String[42];
 };
+
+bool deleteDatabase(Database *db) {
+#ifndef NDEBUG
+  PFNC
+#endif
+  db->sync();
+  remove(db->getFilePath());
+  return !std::filesystem::exists(db->getFilePath());
+}
 
 bool isEqual(float x, float y) {
   return std::fabs(x - y) < std::numeric_limits<float>::epsilon();
@@ -85,7 +94,7 @@ void insertEntryTwoSingle(Database *db, uint32_t count = 1) {
 
 void insertEntryThreeSingle(Database *db, uint32_t count = 1) {
   for(uint32_t i = 0; i < count; i++) {
-    db->insert(EntryThree {generateRandomFloat(), generateRandomString()});
+    db->insert(EntryThree {generateRandomFloat(), generateRandomChar()});
   }
 }
 
@@ -117,7 +126,7 @@ void insertEntryThreeMultiple(Database *db, uint32_t count = 10, uint32_t chunkS
   uint32_t l = count / chunkSize;
   for(uint32_t i = 0; i < l; i++) {
     for(uint32_t j = 0; j < chunkSize; j++) {
-      v.push_back(EntryThree {generateRandomFloat(), generateRandomString()});
+      v.push_back(EntryThree {generateRandomFloat(), generateRandomChar()});
     }
     db->insertMultiple(v);
   }

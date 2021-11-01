@@ -7,7 +7,7 @@
 TEST(Database, construct) {
   Database db(TEST_DB_PATH);
   EXPECT_TRUE(db.isOpen());
-  EXPECT_TRUE(db.deleteDatabase());
+  EXPECT_TRUE(deleteDatabase(&db));
 }
 
 TEST(Database, reopen) {
@@ -19,7 +19,7 @@ TEST(Database, reopen) {
     Database db(TEST_DB_PATH);
     EXPECT_TRUE(db.isOpen());
     EXPECT_EQ(db.getEntryCount(), 0);
-    db.deleteDatabase();
+    deleteDatabase(&db);
   }
 }
 
@@ -36,7 +36,7 @@ TEST(Database, find) {
 
   EXPECT_NE(idx, -1);
   EXPECT_TRUE(isEqual(e0.m_Float, 2.34));
-  EXPECT_TRUE(db.deleteDatabase());
+  EXPECT_TRUE(deleteDatabase(&db));
 }
 
 TEST(Database, insert) {
@@ -76,7 +76,7 @@ TEST(Database, insert) {
 
   std::cout << db.getEntryCount() << std::endl;
 
-  EXPECT_TRUE(db.deleteDatabase());
+  EXPECT_TRUE(deleteDatabase(&db));
 }
 
 TEST(Database, reopenAndWrite) {
@@ -90,6 +90,6 @@ TEST(Database, reopenAndWrite) {
     EXPECT_TRUE(db.isOpen());
     insertEntryTwoSingle(&db, 50);
     EXPECT_EQ(db.getEntryCount(), 70);
-    EXPECT_TRUE(db.deleteDatabase());
+    EXPECT_TRUE(deleteDatabase(&db));
   }
 }
