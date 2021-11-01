@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#define TEST_DB_PATH "test.db"
+
 #define TIMESTAMP std::chrono::high_resolution_clock::to_time_t(std::chrono::high_resolution_clock::now())
 
 std::string TIMEIT_NAME = "TIMEIT";
@@ -69,22 +71,57 @@ float generateRandomFloat() {
   return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX); // NOLINT(cert-msc50-cpp)
 }
 
-void insertEntryOne(Database *db, uint32_t count = 1) {
+void insertEntryOneSingle(Database *db, uint32_t count = 1) {
   for(uint32_t i = 0; i < count; i++) {
     db->insert(EntryOne {generateRandomInteger(), generateRandomFloat(), generateRandomChar()});
   }
 }
 
-void insertEntryTwo(Database *db, uint32_t count = 1) {
+void insertEntryTwoSingle(Database *db, uint32_t count = 1) {
   for(uint32_t i = 0; i < count; i++) {
     db->insert(EntryTwo {generateRandomChar(), generateRandomFloat()});
   }
 }
 
-void insertEntryThree(Database *db, uint32_t count = 1) {
+void insertEntryThreeSingle(Database *db, uint32_t count = 1) {
   for(uint32_t i = 0; i < count; i++) {
     db->insert(EntryThree {generateRandomFloat(), generateRandomString()});
   }
 }
+
+void insertEntryOneMultiple(Database *db, uint32_t count = 10, uint32_t chunkSize = 10) {
+  std::vector<EntryOne> v;
+  uint32_t l = count / chunkSize;
+  for(uint32_t i = 0; i < l; i++) {
+    for(uint32_t j = 0; j < chunkSize; j++) {
+      v.push_back(EntryOne {generateRandomInteger(), generateRandomFloat(), generateRandomChar()});
+    }
+    db->insertMultiple(v);
+    v.clear();
+  }
+}
+
+void insertEntryTwoMultiple(Database *db, uint32_t count = 10, uint32_t chunkSize = 10) {
+  std::vector<EntryTwo> v;
+  uint32_t l = count / chunkSize;
+  for(uint32_t i = 0; i < l; i++) {
+    for(uint32_t j = 0; j < chunkSize; j++) {
+      v.push_back(EntryTwo {generateRandomChar(), generateRandomFloat()});
+    }
+    db->insertMultiple(v);
+  }
+}
+
+void insertEntryThreeMultiple(Database *db, uint32_t count = 10, uint32_t chunkSize = 10) {
+  std::vector<EntryThree> v;
+  uint32_t l = count / chunkSize;
+  for(uint32_t i = 0; i < l; i++) {
+    for(uint32_t j = 0; j < chunkSize; j++) {
+      v.push_back(EntryThree {generateRandomFloat(), generateRandomString()});
+    }
+    db->insertMultiple(v);
+  }
+}
+
 
 #endif//DBPP__TEST_COMMON_H_

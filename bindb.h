@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <vector>
 
+
 class Database {
   using EntryHeader = size_t;
   static constexpr uint32_t m_u32EntryHeaderSize = sizeof(EntryHeader);
@@ -173,7 +174,7 @@ class Database {
 
  public:
   explicit Database(const char* i_sDatabasePath) : m_sDatabasePath(i_sDatabasePath) {
-    m_iFileDescriptor = open(m_sDatabasePath, O_CREAT | O_RDWR);
+    m_iFileDescriptor = open(m_sDatabasePath, O_CREAT | O_RDWR, 0644);
     if(m_iFileDescriptor == -1) {
       std::cout << "Could not open " << m_sDatabasePath << std::endl;
     }
@@ -264,13 +265,14 @@ class Database {
   template<typename EntryType>
   void insert(EntryType entry) {
     auto entrySize = sizeof(EntryType);
+    auto hdr = typeid(EntryType).hash_code();
 
     if (!hasType<EntryType>()) {
       addType<EntryType>();
     }
 
-    auto hdr = typeid(EntryType).hash_code();
     m_EntryPositions.push_back(hdr);
+    m_Header.m_u32EntryCount++;
 
     lseek(m_iFileDescriptor, 0, SEEK_END);
     write(m_iFileDescriptor, &hdr, m_u32EntryHeaderSize);
@@ -279,10 +281,25 @@ class Database {
   }
 
   template<typename EntryType>
-  void insertMultiple(std::vector<EntryType> entries) {
-    for(const auto& e : entries) {
-      insert(e);
+  void insertMultiple(std::vector<EntryType> entries, uint32_t chunkSize = 10) {
+    auto entrySize = sizeof(EntryType);
+    auto hdr = typeid(EntryType).hash_code();
+
+    if (!hasType<EntryType>()) {
+      addType<EntryType>();
     }
+
+    std::vector<EntryHeader> hdrs(entries.size(), hdr);
+    m_EntryPositions.insert(m_EntryPositions.end(), hdrs.begin(), hdrs.end());
+    m_Header.m_u32EntryCount += entries.size();
+
+    std::vector<std::pair<EntryHeader, EntryType>> writeVector;
+    for(const auto& e: entries) {
+      writeVector.template emplace_back(hdr, e);
+    }
+
+    write(m_iFileDescriptor, &writeVector[0], (m_u32EntryHeaderSize + entrySize) * writeVector.size());
+    sync();
   }
 
   template<typename EntryType>

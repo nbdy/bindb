@@ -4,9 +4,6 @@
 
 #include "test_common.h"
 
-#define TEST_DB_PATH "test.db"
-
-
 TEST(Database, construct) {
   Database db(TEST_DB_PATH);
   EXPECT_TRUE(db.isOpen());
@@ -47,9 +44,9 @@ TEST(Database, insert) {
 
   EXPECT_TRUE(db.isOpen());
 
+  insertEntryOneSingle(&db, 20);
   db.insert(EntryOne {1, 2.34, "abc"});
-  insertEntryOne(&db, 20);
-  insertEntryTwo(&db, 7);
+  insertEntryTwoSingle(&db, 7);
   // 28
 
   EXPECT_TRUE(db.isOpen());
@@ -60,22 +57,24 @@ TEST(Database, insert) {
   });
 
   EXPECT_NE(idx, -1);
-  EXPECT_EQ(idx, 21);
+  EXPECT_EQ(idx, 20);
   EXPECT_TRUE(isEqual(e0.m_Float, 2.34));
 
-  insertEntryThree(&db, 29);
+  insertEntryThreeSingle(&db, 28);
   db.insert(EntryTwo {'p', 3.14}); // 28 + 29 + 1 = 58
-  insertEntryOne(&db, 69);
+  insertEntryOneSingle(&db, 69);
   // 58 + 69 = 127
 
   EntryTwo e1 {};
   idx = db.find<EntryTwo>(e1, [](const EntryTwo& e) {
-    return e.m_Char == 'x';
+    return e.m_Char == 'p';
   });
 
   EXPECT_NE(idx, -1);
-  EXPECT_EQ(idx, 58);
-  EXPECT_TRUE(isEqual(e0.m_Float, 3.14));
+  EXPECT_EQ(idx, 56);
+  EXPECT_TRUE(isEqual(e1.m_Float, 3.14));
+
+  std::cout << db.getEntryCount() << std::endl;
 
   EXPECT_TRUE(db.deleteDatabase());
 }
