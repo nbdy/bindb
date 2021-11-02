@@ -324,7 +324,6 @@ class Database {
   int64_t find(EntryType& entry, std::function<bool(const EntryType&)> i_FilterFunction) {
     auto hdrHash = typeid(EntryType).hash_code();
     int64_t idx = 0;
-    size_t tmpSize = 0;
     EntryType tmp {};
     // skip to first entry
     auto bodyOffset = getBodyOffset();
@@ -333,20 +332,46 @@ class Database {
     // iterate over positions
     for (const auto& p : m_EntryPositions) {
       bodyOffset += m_u32EntryHeaderSize;
-      lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
-      tmpSize = em[p];
       if (p == hdrHash) {
-        read(m_iFileDescriptor, &tmp, tmpSize);
+        lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+        read(m_iFileDescriptor, &tmp, em[p]);
         if(i_FilterFunction(tmp)) {
           entry = tmp;
           return idx;
         }
       }
-      bodyOffset += tmpSize;
+      bodyOffset += em[p];
       idx++;
     }
 
     return -1;
+  }
+
+  template<typename EntryType>
+  std::vector<EntryType> findMultiple(std::function<bool(const EntryType&)> i_FilterFunction) {
+    std::vector<EntryType> r;
+    auto hdrHash = typeid(EntryType).hash_code();
+    int64_t idx = 0;
+    EntryType tmp {};
+    // skip to first entry
+    auto bodyOffset = getBodyOffset();
+    auto em = entryDescriptions2Map();
+    lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+    // iterate over positions
+    for (const auto& p : m_EntryPositions) {
+      bodyOffset += m_u32EntryHeaderSize;
+      if (p == hdrHash) {
+        lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+        read(m_iFileDescriptor, &tmp, em[p]);
+        if(i_FilterFunction(tmp)) {
+          r.push_back(tmp);
+        }
+      }
+      bodyOffset += em[p];
+      idx++;
+    }
+
+    return r;
   }
 
   [[nodiscard]] bool isOpen() const {
@@ -361,10 +386,6 @@ class Database {
     if(fsync(m_iFileDescriptor) == -1) {
       std::cout << __PRETTY_FUNCTION__ << " sync error: " << strerror(errno) << std::endl;
     }
-  }
-
-  [[nodiscard]] int32_t getFileDescriptor() const {
-    return m_iFileDescriptor;
   }
 };
 

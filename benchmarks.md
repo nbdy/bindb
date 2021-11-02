@@ -2,8 +2,6 @@
 ## `(Ryzen 9 3900xt) 12c / 24t @ 3.8GHz`
 ### insert
 
-
-
 #### Single
 
 | Count | Single |
@@ -40,8 +38,6 @@
 | 1m    | 2s       |
 
 ### find
-
-#### Single
 
 | Count | Single |
 | :---: | :----: |

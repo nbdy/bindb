@@ -93,3 +93,19 @@ TEST(Database, reopenAndWrite) {
     EXPECT_TRUE(deleteDatabase(&db));
   }
 }
+
+TEST(Database, findMultiple) {
+  Database db(TEST_DB_PATH);
+  EXPECT_TRUE(db.isOpen());
+  insertEntryOneMultiple(&db, 222);
+  db.insert(EntryTwo {'a', 4.2});
+  insertEntryTwoMultiple(&db, 523);
+  db.insert(EntryTwo {'b', 4.2});
+  insertEntryThreeMultiple(&db, 234);
+  db.insert(EntryTwo {'c', 4.2});
+  auto results = db.findMultiple<EntryTwo>([](const EntryTwo& e) {
+    return isEqual(e.m_Float, 4.2);
+  });
+  EXPECT_EQ(results.size(), 3);
+  EXPECT_TRUE(deleteDatabase(&db));
+}
