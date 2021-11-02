@@ -8,6 +8,8 @@ set_target_properties(bindb PROPERTIES PUBLIC_HEADER "bindb.h")
 
 option(TESTS "Compile tests" ON)
 
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-result -Wno-sign-compare")
+
 if (TESTS)
     include(FetchContent)
     FetchContent_Declare(

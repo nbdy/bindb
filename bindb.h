@@ -144,8 +144,6 @@ class Database {
   }
 
   void init() {
-    (void) memset(&m_Header, 0, m_u32HeaderSize);
-
     // Check if the file is empty
     if (getFileSize() == 0) {
       // File is empty, since we just created it. So let's also create the header.
@@ -201,7 +199,7 @@ class Database {
     return m_u32HeaderSize + (m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount());
   }
 
-  uint32_t getBodySize() {
+  uint64_t getBodySize() {
     auto s = getFileSize();
     auto o = getBodyOffset();
     if (s <= o) {
