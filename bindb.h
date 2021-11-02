@@ -98,25 +98,25 @@ class Database {
   }
 
   void writeHeader() {
-    (void) lseek(m_iFileDescriptor, 0, SEEK_SET);
-    (void) write(m_iFileDescriptor, &m_Header, m_u32HeaderSize);
+    (void)(lseek(m_iFileDescriptor, 0, SEEK_SET));
+    (void)(write(m_iFileDescriptor, &m_Header, m_u32HeaderSize));
     sync();
   }
 
   void readHeader() {
-    (void) lseek(m_iFileDescriptor, 0, SEEK_SET);
-    (void) read(m_iFileDescriptor, &m_Header, m_u32HeaderSize);
+    (void)(lseek(m_iFileDescriptor, 0, SEEK_SET));
+    (void)(read(m_iFileDescriptor, &m_Header, m_u32HeaderSize));
   }
 
   void readEntryTypes() {
     m_EntryDescriptions.resize(m_Header.getEntryTypeCount());
-    (void) lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET);
-    (void) read(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount());
+    (void)(lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET));
+    (void)(read(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount()));
   }
 
   void writeEntryTypes() {
-    (void) lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET);
-    (void) write(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount());
+    (void)(lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET));
+    (void)(write(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount()));
     sync();
   }
 
@@ -128,7 +128,7 @@ class Database {
       return;
     }
 
-    (void) lseek(m_iFileDescriptor, firstHeaderOffset, SEEK_SET);
+    (void)(lseek(m_iFileDescriptor, firstHeaderOffset, SEEK_SET));
     // Iterate over all the entries
     EntryHeader hdr;
     for (uint32_t i = 0U; i < m_Header.getEntryCount(); i++) {
@@ -187,7 +187,7 @@ class Database {
     for (const auto& e : m_EntryDescriptions) {
       if (e.m_Hash == i_EntryHeader) {
         found = true;
-        (void) lseek(m_iFileDescriptor, e.m_EntrySize, SEEK_CUR);
+        (void)(lseek(m_iFileDescriptor, e.m_EntrySize, SEEK_CUR));
         break;
       }
     }
@@ -228,7 +228,7 @@ class Database {
   ~Database() {
     if(m_iFileDescriptor != -1) {
       sync();
-      (void) close(m_iFileDescriptor);
+      (void)(close(m_iFileDescriptor));
     }
   }
 
@@ -270,13 +270,13 @@ class Database {
     // void *body = malloc(bodySize + 1);
 
     auto bodyOffset = getBodyOffset();
-    (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+    (void)(lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
 
     if (bodySize > 0U) {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Reading body (" << bodySize << " bytes)" << std::endl;
 #endif
-      (void) read(m_iFileDescriptor, &body, bodySize);
+      (void)(read(m_iFileDescriptor, &body, bodySize));
     }
 
     // set the new entry type count after we read the body
@@ -293,8 +293,8 @@ class Database {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Writing body (" << bodySize << " bytes)" << std::endl;
 #endif
-      (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
-      (void) write(m_iFileDescriptor, &body, bodySize);
+      (void)(lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
+      (void)(write(m_iFileDescriptor, &body, bodySize));
     }
 
     sync();
@@ -317,8 +317,8 @@ class Database {
     std::vector<std::pair<EntryHeader, EntryType>> v;
     v.push_back(std::make_pair(hdr, i_Entry));
 
-    (void) lseek(m_iFileDescriptor, 0, SEEK_END);
-    (void) write(m_iFileDescriptor, &v[0], sizeof(std::pair<EntryHeader, EntryType>));
+    (void)(lseek(m_iFileDescriptor, 0, SEEK_END));
+    (void)(write(m_iFileDescriptor, &v[0], sizeof(std::pair<EntryHeader, EntryType>)));
     sync();
   }
 
