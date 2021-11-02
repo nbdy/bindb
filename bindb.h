@@ -2,15 +2,15 @@
 // Created by nbdy on 26.10.21.
 //
 
-#ifndef DBPP__DBPP_H_
-#define DBPP__DBPP_H_
+#ifndef BINDB__BINDB_H_
+#define BINDB__BINDB_H_
 
 #ifndef NDEBUG
 #define PFNC std::cout << __PRETTY_FUNCTION__ << std::endl;
 #endif
 
 #ifndef EXPECTED_MAGIC
-#define EXPECTED_MAGIC 420
+#define EXPECTED_MAGIC 420U
 #endif
 
 #include <algorithm>
@@ -30,20 +30,49 @@
 
 class Database {
   using EntryHeader = size_t;
-  static constexpr uint32_t m_u32EntryHeaderSize = sizeof(EntryHeader);
+  static constexpr auto m_u32EntryHeaderSize = sizeof(EntryHeader);
 
-  struct Header {
+  class Header {
     uint32_t m_u32Magic = EXPECTED_MAGIC;
-    uint32_t m_u32EntryCount = 0;
-    uint32_t m_u32EntryTypeCount = 0;
+    uint32_t m_u32EntryCount = 0U;
+    size_t m_EntryTypeCount = 0U;
+
+   public:
+    [[nodiscard]] uint32_t getMagic() const {
+      return m_u32Magic;
+    }
+
+    [[nodiscard]] uint32_t getEntryCount() const {
+      return m_u32EntryCount;
+    }
+
+    [[nodiscard]] size_t getEntryTypeCount() const {
+      return m_EntryTypeCount;
+    }
+
+    void setMagic(uint32_t i_u32Value) {
+      m_u32Magic = i_u32Value;
+    }
+
+    void setEntryCount(uint32_t i_u32Value) {
+      m_u32EntryCount = i_u32Value;
+    }
+
+    void setEntryTypeCount(size_t i_Value) {
+      m_EntryTypeCount = i_Value;
+    }
+
+    void incrementEntryCount(uint32_t i_u32Count = 1U) {
+      m_u32EntryCount += i_u32Count;
+    }
   };
-  const static uint32_t m_u32HeaderSize = sizeof(Header);
+  const static auto m_u32HeaderSize = sizeof(Header);
 
   struct EntryTypeDescription {
     size_t m_Hash;
-    uint32_t m_u32EntrySize;
+    size_t m_EntrySize;
   };
-  const static uint32_t m_u32EntryTypeDescriptionSize = sizeof(EntryTypeDescription);
+  const static auto m_u32EntryTypeDescriptionSize = sizeof(EntryTypeDescription);
 
   const char* m_sDatabasePath = nullptr;
   uint32_t m_u32ExpectedMagic = EXPECTED_MAGIC;
@@ -56,42 +85,42 @@ class Database {
   std::vector<EntryTypeDescription> m_EntryDescriptions;
   std::vector<EntryHeader> m_EntryPositions;
 
-  [[nodiscard]] uint32_t getEntryDescriptionsSize() const {
-    return m_Header.m_u32EntryTypeCount * m_u32EntryTypeDescriptionSize;
+  [[nodiscard]] uint64_t getEntryDescriptionsSize() const {
+    return m_Header.getEntryTypeCount() * m_u32EntryTypeDescriptionSize;
   }
 
-  std::map<EntryHeader, uint32_t> entryDescriptions2Map() {
-    std::map<EntryHeader, uint32_t> r;
+  std::map<EntryHeader, size_t> entryDescriptions2Map() {
+    std::map<EntryHeader, size_t> r;
     for(const auto& d : m_EntryDescriptions) {
-      r[d.m_Hash] = d.m_u32EntrySize;
+      r[d.m_Hash] = d.m_EntrySize;
     }
     return r;
   }
 
-  void _writeHeader() {
-    lseek(m_iFileDescriptor, 0, SEEK_SET);
-    write(m_iFileDescriptor, &m_Header, m_u32HeaderSize);
+  void writeHeader() {
+    (void) lseek(m_iFileDescriptor, 0, SEEK_SET);
+    (void) write(m_iFileDescriptor, &m_Header, m_u32HeaderSize);
     sync();
   }
 
-  void _readHeader() {
-    lseek(m_iFileDescriptor, 0, SEEK_SET);
-    read(m_iFileDescriptor, &m_Header, m_u32HeaderSize);
+  void readHeader() {
+    (void) lseek(m_iFileDescriptor, 0, SEEK_SET);
+    (void) read(m_iFileDescriptor, &m_Header, m_u32HeaderSize);
   }
 
-  void _readEntryTypes() {
-    m_EntryDescriptions.resize(m_Header.m_u32EntryTypeCount);
-    lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET);
-    read(m_iFileDescriptor, &m_EntryDescriptions[0], m_u32EntryTypeDescriptionSize * m_Header.m_u32EntryTypeCount);
+  void readEntryTypes() {
+    m_EntryDescriptions.resize(m_Header.getEntryTypeCount());
+    (void) lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET);
+    (void) read(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount());
   }
 
-  void _writeEntryTypes() {
-    lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET);
-    write(m_iFileDescriptor, &m_EntryDescriptions[0], m_u32EntryTypeDescriptionSize * m_Header.m_u32EntryTypeCount);
+  void writeEntryTypes() {
+    (void) lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET);
+    (void) write(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount());
     sync();
   }
 
-  void _index() {
+  void index() {
     // Seek to first entry header
     auto firstHeaderOffset = m_u32HeaderSize + getEntryDescriptionsSize();
 
@@ -99,36 +128,34 @@ class Database {
       return;
     }
 
-    lseek(m_iFileDescriptor, firstHeaderOffset, SEEK_SET);
+    (void) lseek(m_iFileDescriptor, firstHeaderOffset, SEEK_SET);
     // Iterate over all the entries
-    EntryHeader eHdr;
-    for (uint32_t idx = 0; idx < m_Header.m_u32EntryCount; idx++) {
-      read(m_iFileDescriptor, &eHdr, m_u32EntryHeaderSize);
-      if (_skip2Next(eHdr)) {
-        m_EntryPositions.push_back(eHdr);
+    EntryHeader hdr;
+    for (uint32_t i = 0U; i < m_Header.getEntryCount(); i++) {
+      (void) read(m_iFileDescriptor, &hdr, m_u32EntryHeaderSize);
+      if (skip2Next(hdr)) {
+        m_EntryPositions.push_back(hdr);
       }
     }
-    if (m_EntryPositions.size() < m_Header.m_u32EntryCount) {
-      std::cout << "!! Read " << std::to_string(m_EntryPositions.size()) << " out of " << std::to_string(m_Header.m_u32EntryCount) << " entries" << std::endl;
+    if (m_EntryPositions.size() < m_Header.getEntryCount()) {
+      std::cout << "!! Read " << std::to_string(m_EntryPositions.size()) << " out of " << std::to_string(m_Header.getEntryCount()) << " entries" << std::endl;
       std::cout << "!! Database might be corrupted" << std::endl;
     }
   }
 
-  void _init() {
-    memset(&m_Header, 0, m_u32HeaderSize);
+  void init() {
+    (void) memset(&m_Header, 0, m_u32HeaderSize);
 
     // Check if the file is empty
     if (getFileSize() == 0) {
       // File is empty, since we just created it. So let's also create the header.
-      m_Header.m_u32EntryCount = 0;
-      m_Header.m_u32EntryTypeCount = 0;
-      m_Header.m_u32Magic = m_u32ExpectedMagic;
-      _writeHeader();
+      m_Header.setMagic(m_u32ExpectedMagic);
+      writeHeader();
     } else {
       // File is not empty, read the header
-      _readHeader();
+      readHeader();
 
-      m_bError = m_Header.m_u32Magic != m_u32ExpectedMagic;
+      m_bError = m_Header.getMagic() != m_u32ExpectedMagic;
 
       if (m_bError) {
         return; // There was an error, lets not proceed
@@ -137,30 +164,30 @@ class Database {
 
     // Index entry descriptions
     if (!m_bError) {
-      _readEntryTypes();
+      readEntryTypes();
     }
 
     // Index entry headers and positions
     if (!m_bError) {
-      _index();
+      index();
     }
 
 #ifndef NDEBUG
-    std::cout << "Entry types: " << m_Header.m_u32EntryTypeCount << " | Entry count: " << m_Header.m_u32EntryCount << std::endl;
+    std::cout << "Entry types: " << m_Header.getEntryTypeCount() << " | Entry count: " << m_Header.getEntryCount() << std::endl;
     std::cout << "Entry description:" << std::endl;
     for(const auto& e : m_EntryDescriptions) {
-      std::cout << "\tHash: " << e.m_Hash << " | Size: " << e.m_u32EntrySize << std::endl;
+      std::cout << "\tHash: " << e.m_Hash << " | Size: " << e.m_EntrySize << std::endl;
     }
 #endif
   }
 
   // TODO(nbdy): optimize this
-  bool _skip2Next(EntryHeader i_EntryHeader) {
+  bool skip2Next(EntryHeader i_EntryHeader) {
     bool found = false;
     for (const auto& e : m_EntryDescriptions) {
       if (e.m_Hash == i_EntryHeader) {
         found = true;
-        lseek(m_iFileDescriptor, e.m_u32EntrySize, SEEK_CUR);
+        (void) lseek(m_iFileDescriptor, e.m_EntrySize, SEEK_CUR);
         break;
       }
     }
@@ -170,26 +197,26 @@ class Database {
     return found;
   }
 
-  [[nodiscard]] uint32_t getBodyOffset() const {
-    return m_u32HeaderSize + (m_u32EntryTypeDescriptionSize * m_Header.m_u32EntryTypeCount);
+  [[nodiscard]] uint64_t getBodyOffset() const {
+    return m_u32HeaderSize + (m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount());
   }
 
   uint32_t getBodySize() {
     auto s = getFileSize();
     auto o = getBodyOffset();
     if (s <= o) {
-      return 0;
+      return 0U;
     }
     return s - o;
   }
 
  public:
   explicit Database(const char* i_sDatabasePath) : m_sDatabasePath(i_sDatabasePath) {
-    m_iFileDescriptor = open(m_sDatabasePath, O_CREAT | O_RDWR, 0644);
+    m_iFileDescriptor = open(m_sDatabasePath, O_CREAT | O_RDWR, 420);
     if(m_iFileDescriptor == -1) {
       std::cout << "Could not open " << m_sDatabasePath << std::endl;
     }
-    _init();
+    init();
   }
 
   /*
@@ -201,11 +228,11 @@ class Database {
   ~Database() {
     if(m_iFileDescriptor != -1) {
       sync();
-      close(m_iFileDescriptor);
+      (void) close(m_iFileDescriptor);
     }
   }
 
-  [[nodiscard]] uint32_t getFileSize() const {
+  [[nodiscard]] off_t getFileSize() const {
     auto r = lseek(m_iFileDescriptor, 0, SEEK_END);
 
     if(r == -1) {
@@ -215,12 +242,8 @@ class Database {
     return r;
   }
 
-  static uint32_t getHeaderSize() {
-    return m_u32HeaderSize;
-  }
-
   [[nodiscard]] uint32_t getEntryCount() const {
-    return m_Header.m_u32EntryCount;
+    return m_Header.getEntryCount();
   }
 
   template<typename EntryType>
@@ -243,76 +266,76 @@ class Database {
 
     // read body into buffer, so we can move it further back
     auto bodySize = getBodySize();
-    // char body[bodySize + 1];
-    void *body = malloc(bodySize + 1);
+    char body[bodySize + 1U];
+    // void *body = malloc(bodySize + 1);
 
     auto bodyOffset = getBodyOffset();
-    lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+    (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
 
-    if (bodySize > 0) {
+    if (bodySize > 0U) {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Reading body (" << bodySize << " bytes)" << std::endl;
 #endif
-      read(m_iFileDescriptor, body, bodySize);
+      (void) read(m_iFileDescriptor, &body, bodySize);
     }
 
     // set the new entry type count after we read the body
     // since getBodySize internally depends on m_Header.m_u32EntryTypeCount
-    m_Header.m_u32EntryTypeCount = m_EntryDescriptions.size();
+    m_Header.setEntryTypeCount(m_EntryDescriptions.size());
 
     // write the header with the incremented entry type count
-    _writeHeader();
-    _writeEntryTypes();
+    writeHeader();
+    writeEntryTypes();
 
     bodyOffset = getBodyOffset();
 
-    if(bodySize > 0) {
+    if(bodySize > 0U) {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Writing body (" << bodySize << " bytes)" << std::endl;
 #endif
-      lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
-      write(m_iFileDescriptor, body, bodySize);
+      (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+      (void) write(m_iFileDescriptor, &body, bodySize);
     }
 
     sync();
-    free(body);
+    // free(body);
   }
 
   template<typename EntryType>
-  void insert(EntryType entry) {
+  void insert(EntryType i_Entry) {
     auto hdr = typeid(EntryType).hash_code();
 
-    if (!hasType<EntryType>()) {
+    if (hasType<EntryType>() == false) {
       addType<EntryType>();
     }
 
     m_EntryPositions.push_back(hdr);
 
-    m_Header.m_u32EntryCount++;
-    _writeHeader();
+    m_Header.incrementEntryCount();
+    writeHeader();
 
     std::vector<std::pair<EntryHeader, EntryType>> v;
-    v.push_back(std::make_pair(hdr, entry));
+    v.push_back(std::make_pair(hdr, i_Entry));
 
-    lseek(m_iFileDescriptor, 0, SEEK_END);
-    write(m_iFileDescriptor, &v[0], sizeof(std::pair<EntryHeader, EntryType>));
+    (void) lseek(m_iFileDescriptor, 0, SEEK_END);
+    (void) write(m_iFileDescriptor, &v[0], sizeof(std::pair<EntryHeader, EntryType>));
     sync();
   }
 
   template<typename EntryType>
-  void insertMultiple(std::vector<EntryType> entries, uint32_t chunkSize = 1000) {
+  void insertMultiple(std::vector<EntryType> i_Entries) {
     auto hdr = typeid(EntryType).hash_code();
 
-    if (!hasType<EntryType>()) {
+    if (hasType<EntryType>() == false) {
       addType<EntryType>();
     }
 
-    std::vector<EntryHeader> hdrs(entries.size(), hdr);
-    m_EntryPositions.insert(m_EntryPositions.end(), hdrs.begin(), hdrs.end());
-    m_Header.m_u32EntryCount += entries.size();
+    std::vector<EntryHeader> hdrs(i_Entries.size(), hdr);
+    (void) m_EntryPositions.insert(m_EntryPositions.end(), hdrs.begin(), hdrs.end());
+    m_Header.incrementEntryCount(i_Entries.size());
 
     std::vector<std::pair<EntryHeader, EntryType>> writeVector;
-    std::for_each(entries.begin(), entries.end(), [&writeVector, hdr](const auto& e) {
+    std::for_each(i_Entries.begin(), i_Entries.end(), [&writeVector, hdr](const auto& e) {
       writeVector.push_back(std::make_pair(hdr, e));
     });
 
@@ -321,22 +344,22 @@ class Database {
   }
 
   template<typename EntryType>
-  int64_t find(EntryType& entry, std::function<bool(const EntryType&)> i_FilterFunction) {
+  int64_t find(EntryType& i_Entry, std::function<bool(const EntryType&)> i_FilterFunction) {
     auto hdrHash = typeid(EntryType).hash_code();
     int64_t idx = 0;
     EntryType tmp {};
     // skip to first entry
     auto bodyOffset = getBodyOffset();
     auto em = entryDescriptions2Map();
-    lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+    (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
     // iterate over positions
     for (const auto& p : m_EntryPositions) {
       bodyOffset += m_u32EntryHeaderSize;
       if (p == hdrHash) {
-        lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+        (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
         read(m_iFileDescriptor, &tmp, em[p]);
         if(i_FilterFunction(tmp)) {
-          entry = tmp;
+          i_Entry = tmp;
           return idx;
         }
       }
@@ -356,12 +379,12 @@ class Database {
     // skip to first entry
     auto bodyOffset = getBodyOffset();
     auto em = entryDescriptions2Map();
-    lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+    (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
     // iterate over positions
     for (const auto& p : m_EntryPositions) {
       bodyOffset += m_u32EntryHeaderSize;
       if (p == hdrHash) {
-        lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
+        (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
         read(m_iFileDescriptor, &tmp, em[p]);
         if(i_FilterFunction(tmp)) {
           r.push_back(tmp);
@@ -384,9 +407,9 @@ class Database {
 
   void sync() const {
     if(fsync(m_iFileDescriptor) == -1) {
-      std::cout << __PRETTY_FUNCTION__ << " sync error: " << strerror(errno) << std::endl;
+      std::cout << "sync error: " << strerror(errno) << std::endl;
     }
   }
 };
 
-#endif//DBPP__DBPP_H_
+#endif//BINDB__BINDB_H_
