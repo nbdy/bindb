@@ -339,7 +339,7 @@ class Database {
       writeVector.push_back(std::make_pair(hdr, e));
     });
 
-    write(m_iFileDescriptor, &writeVector[0], sizeof(std::pair<EntryHeader, EntryType>) * writeVector.size());
+    (void) write(m_iFileDescriptor, &writeVector[0], sizeof(std::pair<EntryHeader, EntryType>) * writeVector.size());
     sync();
   }
 
@@ -357,7 +357,7 @@ class Database {
       bodyOffset += m_u32EntryHeaderSize;
       if (p == hdrHash) {
         (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
-        read(m_iFileDescriptor, &tmp, em[p]);
+        (void) read(m_iFileDescriptor, &tmp, em[p]);
         if(i_FilterFunction(tmp)) {
           i_Entry = tmp;
           return idx;
@@ -385,7 +385,7 @@ class Database {
       bodyOffset += m_u32EntryHeaderSize;
       if (p == hdrHash) {
         (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
-        read(m_iFileDescriptor, &tmp, em[p]);
+        (void) read(m_iFileDescriptor, &tmp, em[p]);
         if(i_FilterFunction(tmp)) {
           r.push_back(tmp);
         }
