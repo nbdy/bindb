@@ -13,6 +13,8 @@
 #define EXPECTED_MAGIC 420U
 #endif
 
+#define USE_MALLOC
+
 #include <algorithm>
 #include <cassert>
 #include <climits>
@@ -264,8 +266,11 @@ class Database {
 
     // read body into buffer, so we can move it further back
     auto bodySize = getBodySize();
+#ifdef USE_MALLOC
+    void *body = malloc(bodySize + 1U);
+#else
     char body[bodySize + 1U];
-    // void *body = malloc(bodySize + 1);
+#endif
 
     auto bodyOffset = getBodyOffset();
     (void)(lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
@@ -274,7 +279,11 @@ class Database {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Reading body (" << bodySize << " bytes)" << std::endl;
 #endif
+#ifdef USE_MALLOC
+      (void)(read(m_iFileDescriptor, body, bodySize));
+#else
       (void)(read(m_iFileDescriptor, &body, bodySize));
+#endif
     }
 
     // set the new entry type count after we read the body
@@ -292,11 +301,17 @@ class Database {
       std::cout << __PRETTY_FUNCTION__ << " Writing body (" << bodySize << " bytes)" << std::endl;
 #endif
       (void)(lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
+#ifdef USE_MALLOC
+      (void)(write(m_iFileDescriptor, body, bodySize));
+#else
       (void)(write(m_iFileDescriptor, &body, bodySize));
+#endif
     }
 
     sync();
-    // free(body);
+#ifdef USE_MALLOC
+    free(body);
+#endif
   }
 
   template<typename EntryType>
