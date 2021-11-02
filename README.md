@@ -1,5 +1,8 @@
 # bindb
 
+[![CodeFactor](https://www.codefactor.io/repository/github/nbdy/bindb/badge)](https://www.codefactor.io/repository/github/nbdy/bindb)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/4be95d472ad24b218192acbcbea36818)](https://www.codacy.com/gh/nbdy/bindb/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=nbdy/bindb&amp;utm_campaign=Badge_Grade)
+
 `binary file based database`
 
 ## features
