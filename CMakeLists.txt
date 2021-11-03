@@ -7,7 +7,7 @@ set_target_properties(bindb PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties(bindb PROPERTIES PUBLIC_HEADER "bindb.h")
 
 option(TESTS "Compile tests" ON)
-option(SQLITE_BENCHMARK "Build the sqlite benchmark" ON)
+option(SQLITE_BENCHMARK "Build the sqlite benchmark" OFF)
 
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-result -Wno-sign-compare")
 
