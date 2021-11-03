@@ -7,6 +7,7 @@ set_target_properties(bindb PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties(bindb PROPERTIES PUBLIC_HEADER "bindb.h")
 
 option(TESTS "Compile tests" ON)
+option(SQLITE_BENCHMARK "Build the sqlite benchmark" ON)
 
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-result -Wno-sign-compare")
 
@@ -32,6 +33,11 @@ if (TESTS)
     include(GoogleTest)
     gtest_discover_tests(bindb_tests)
 endif ()
+
+if (SQLITE_BENCHMARK)
+    add_executable(bindb_sqlite_benchmark sqlite_benchmark.cpp)
+    target_link_libraries(bindb_sqlite_benchmark sqlite3)
+endif()
 
 install(TARGETS bindb
         LIBRARY DESTINATION "lib"

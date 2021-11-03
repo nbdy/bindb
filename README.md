@@ -12,5 +12,7 @@
 - [X] find
 - [X] findMultiple
 - [X] little overhead (4 byte per entry)
+- [X] a bunch faster than sqlite
 
-## [benchmarks](benchmarks.md)
+## [benchmarks for bindb](benchmarks_bindb.md)
+## [benchmarks for sqlite3](benchmarks_sqlite3.md)

@@ -425,4 +425,9 @@ class Database {
   }
 };
 
+
+class AsyncDatabase : public Database {
+  explicit AsyncDatabase(const char* i_sDatabasePath) : Database(i_sDatabasePath) {};
+};
+
 #endif//BINDB__BINDB_H_
