@@ -5,12 +5,10 @@
 #ifndef BINDB__BINDB_H_
 #define BINDB__BINDB_H_
 
+
+
 #ifndef NDEBUG
 #define PFNC std::cout << __PRETTY_FUNCTION__ << std::endl;
-#endif
-
-#ifndef EXPECTED_MAGIC
-#define EXPECTED_MAGIC 420U
 #endif
 
 #define USE_MALLOC
@@ -29,6 +27,9 @@
 #include <unistd.h>
 #include <vector>
 
+namespace bindb {
+
+constexpr uint32_t EXPECTED_MAGIC = 420U;
 
 class Database {
   using EntryHeader = size_t;
@@ -93,32 +94,32 @@ class Database {
 
   std::map<EntryHeader, size_t> entryDescriptions2Map() {
     std::map<EntryHeader, size_t> r;
-    for(const auto& d : m_EntryDescriptions) {
+    for (const auto& d : m_EntryDescriptions) {
       r[d.m_Hash] = d.m_EntrySize;
     }
     return r;
   }
 
   void writeHeader() {
-    (void)(lseek(m_iFileDescriptor, 0, SEEK_SET));
-    (void)(write(m_iFileDescriptor, &m_Header, m_u32HeaderSize));
+    (void) (lseek(m_iFileDescriptor, 0, SEEK_SET));
+    (void) (write(m_iFileDescriptor, &m_Header, m_u32HeaderSize));
     sync();
   }
 
   void readHeader() {
-    (void)(lseek(m_iFileDescriptor, 0, SEEK_SET));
-    (void)(read(m_iFileDescriptor, &m_Header, m_u32HeaderSize));
+    (void) (lseek(m_iFileDescriptor, 0, SEEK_SET));
+    (void) (read(m_iFileDescriptor, &m_Header, m_u32HeaderSize));
   }
 
   void readEntryTypes() {
     m_EntryDescriptions.resize(m_Header.getEntryTypeCount());
-    (void)(lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET));
-    (void)(read(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount()));
+    (void) (lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET));
+    (void) (read(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount()));
   }
 
   void writeEntryTypes() {
-    (void)(lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET));
-    (void)(write(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount()));
+    (void) (lseek(m_iFileDescriptor, m_u32HeaderSize, SEEK_SET));
+    (void) (write(m_iFileDescriptor, &m_EntryDescriptions[0U], m_u32EntryTypeDescriptionSize * m_Header.getEntryTypeCount()));
     sync();
   }
 
@@ -130,7 +131,7 @@ class Database {
       return;
     }
 
-    (void)(lseek(m_iFileDescriptor, firstHeaderOffset, SEEK_SET));
+    (void) (lseek(m_iFileDescriptor, firstHeaderOffset, SEEK_SET));
     // Iterate over all the entries
     EntryHeader hdr;
     for (uint32_t i = 0U; i < m_Header.getEntryCount(); i++) {
@@ -158,7 +159,7 @@ class Database {
       m_bError = m_Header.getMagic() != m_u32ExpectedMagic;
 
       if (m_bError) {
-        return; // There was an error, lets not proceed
+        return;// There was an error, lets not proceed
       }
     }
 
@@ -175,7 +176,7 @@ class Database {
 #ifndef NDEBUG
     std::cout << "Entry types: " << m_Header.getEntryTypeCount() << " | Entry count: " << m_Header.getEntryCount() << std::endl;
     std::cout << "Entry description:" << std::endl;
-    for(const auto& e : m_EntryDescriptions) {
+    for (const auto& e : m_EntryDescriptions) {
       std::cout << "\tHash: " << e.m_Hash << " | Size: " << e.m_EntrySize << std::endl;
     }
 #endif
@@ -187,7 +188,7 @@ class Database {
     for (const auto& e : m_EntryDescriptions) {
       if (e.m_Hash == i_EntryHeader) {
         found = true;
-        (void)(lseek(m_iFileDescriptor, e.m_EntrySize, SEEK_CUR));
+        (void) (lseek(m_iFileDescriptor, e.m_EntrySize, SEEK_CUR));
         break;
       }
     }
@@ -213,7 +214,7 @@ class Database {
  public:
   explicit Database(const char* i_sDatabasePath) : m_sDatabasePath(i_sDatabasePath) {
     m_iFileDescriptor = open(m_sDatabasePath, O_CREAT | O_RDWR, 420);
-    if(m_iFileDescriptor == -1) {
+    if (m_iFileDescriptor == -1) {
       std::cout << "Could not open " << m_sDatabasePath << std::endl;
     }
     init();
@@ -226,16 +227,16 @@ class Database {
   */
 
   ~Database() {
-    if(m_iFileDescriptor != -1) {
+    if (m_iFileDescriptor != -1) {
       sync();
-      (void)(close(m_iFileDescriptor));
+      (void) (close(m_iFileDescriptor));
     }
   }
 
   [[nodiscard]] off_t getFileSize() const {
     auto r = lseek(m_iFileDescriptor, 0, SEEK_END);
 
-    if(r == -1) {
+    if (r == -1) {
       return 0;
     }
 
@@ -260,29 +261,28 @@ class Database {
     PFNC
 #endif
 
-    m_EntryDescriptions.push_back(EntryTypeDescription {
-        typeid(EntryType).hash_code(), sizeof(EntryType)
-    });
+        m_EntryDescriptions.push_back(EntryTypeDescription{
+            typeid(EntryType).hash_code(), sizeof(EntryType)});
 
     // read body into buffer, so we can move it further back
     auto bodySize = getBodySize();
 #ifdef USE_MALLOC
-    void *body = malloc(bodySize + 1U);
+    void* body = malloc(bodySize + 1U);
 #else
     char body[bodySize + 1U];
 #endif
 
     auto bodyOffset = getBodyOffset();
-    (void)(lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
+    (void) (lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
 
     if (bodySize > 0U) {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Reading body (" << bodySize << " bytes)" << std::endl;
 #endif
 #ifdef USE_MALLOC
-      (void)(read(m_iFileDescriptor, body, bodySize));
+      (void) (read(m_iFileDescriptor, body, bodySize));
 #else
-      (void)(read(m_iFileDescriptor, &body, bodySize));
+      (void) (read(m_iFileDescriptor, &body, bodySize));
 #endif
     }
 
@@ -296,15 +296,15 @@ class Database {
 
     bodyOffset = getBodyOffset();
 
-    if(bodySize > 0U) {
+    if (bodySize > 0U) {
 #ifndef NDEBUG
       std::cout << __PRETTY_FUNCTION__ << " Writing body (" << bodySize << " bytes)" << std::endl;
 #endif
-      (void)(lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
+      (void) (lseek(m_iFileDescriptor, bodyOffset, SEEK_SET));
 #ifdef USE_MALLOC
-      (void)(write(m_iFileDescriptor, body, bodySize));
+      (void) (write(m_iFileDescriptor, body, bodySize));
 #else
-      (void)(write(m_iFileDescriptor, &body, bodySize));
+      (void) (write(m_iFileDescriptor, &body, bodySize));
 #endif
     }
 
@@ -330,8 +330,8 @@ class Database {
     std::vector<std::pair<EntryHeader, EntryType>> v;
     v.push_back(std::make_pair(hdr, i_Entry));
 
-    (void)(lseek(m_iFileDescriptor, 0, SEEK_END));
-    (void)(write(m_iFileDescriptor, &v[0], sizeof(std::pair<EntryHeader, EntryType>)));
+    (void) (lseek(m_iFileDescriptor, 0, SEEK_END));
+    (void) (write(m_iFileDescriptor, &v[0], sizeof(std::pair<EntryHeader, EntryType>)));
     sync();
   }
 
@@ -360,7 +360,7 @@ class Database {
   int64_t find(EntryType& i_Entry, std::function<bool(const EntryType&)> i_FilterFunction) {
     auto hdrHash = typeid(EntryType).hash_code();
     int64_t idx = 0;
-    EntryType tmp {};
+    EntryType tmp{};
     // skip to first entry
     auto bodyOffset = getBodyOffset();
     auto em = entryDescriptions2Map();
@@ -371,7 +371,7 @@ class Database {
       if (p == hdrHash) {
         (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
         (void) read(m_iFileDescriptor, &tmp, em[p]);
-        if(i_FilterFunction(tmp)) {
+        if (i_FilterFunction(tmp)) {
           i_Entry = tmp;
           return idx;
         }
@@ -388,7 +388,7 @@ class Database {
     std::vector<EntryType> r;
     auto hdrHash = typeid(EntryType).hash_code();
     int64_t idx = 0;
-    EntryType tmp {};
+    EntryType tmp{};
     // skip to first entry
     auto bodyOffset = getBodyOffset();
     auto em = entryDescriptions2Map();
@@ -399,7 +399,7 @@ class Database {
       if (p == hdrHash) {
         (void) lseek(m_iFileDescriptor, bodyOffset, SEEK_SET);
         (void) read(m_iFileDescriptor, &tmp, em[p]);
-        if(i_FilterFunction(tmp)) {
+        if (i_FilterFunction(tmp)) {
           r.push_back(tmp);
         }
       }
@@ -419,15 +419,16 @@ class Database {
   }
 
   void sync() const {
-    if(fsync(m_iFileDescriptor) == -1) {
+    if (fsync(m_iFileDescriptor) == -1) {
       std::cout << "sync error: " << strerror(errno) << std::endl;
     }
   }
 };
 
-
 class AsyncDatabase : public Database {
-  explicit AsyncDatabase(const char* i_sDatabasePath) : Database(i_sDatabasePath) {};
+  explicit AsyncDatabase(const char* i_sDatabasePath) : Database(i_sDatabasePath){};
 };
+
+}
 
 #endif//BINDB__BINDB_H_

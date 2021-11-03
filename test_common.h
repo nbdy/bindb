@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+using Database = bindb::Database;
+
 #define TEST_DB_PATH "test.db"
 
 #define TIMESTAMP std::chrono::high_resolution_clock::to_time_t(std::chrono::high_resolution_clock::now())
